@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pokemon Top Trumps</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1>Pokémon Top Trumps</h1>
+  <p>Base stats, boosted by type matchups. Highest wins the round.</p>
+</header>
+
+<div id="setup-screen">
+  <h2>Game Setup</h2>
+
+  <div class="setup-row">
+    <label>Difficulty</label>
+    <div class="option-group" id="difficulty-options">
+      <button type="button" class="option-btn" data-difficulty="easy">
+        <span class="option-title">Easy</span>
+        <span class="option-desc">CPU calls a random stat</span>
+      </button>
+      <button type="button" class="option-btn active" data-difficulty="medium">
+        <span class="option-title">Medium</span>
+        <span class="option-desc">CPU calls its strongest stat</span>
+      </button>
+      <button type="button" class="option-btn" data-difficulty="hard">
+        <span class="option-title">Hard</span>
+        <span class="option-desc">CPU weighs type advantage vs your card</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="setup-row">
+    <label>Defeated Cards</label>
+    <div class="option-group" id="card-rule-options">
+      <button type="button" class="option-btn active" data-card-rule="classic">
+        <span class="option-title">Classic</span>
+        <span class="option-desc">Winner keeps the card they beat</span>
+      </button>
+      <button type="button" class="option-btn" data-card-rule="elimination">
+        <span class="option-title">Elimination</span>
+        <span class="option-desc">Defeated cards are removed from the game — faster matches</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="setup-row">
+    <label for="hand-size-input">Starting cards per player: <span id="hand-size-value">30</span></label>
+    <input type="range" id="hand-size-input" min="10" max="50" step="1" value="30">
+    <div class="range-bounds"><span>10</span><span>50</span></div>
+  </div>
+
+  <button id="start-game-btn">Start Game</button>
+</div>
+
+<div id="loading" style="display:none;">Loading Pokémon roster from PokéAPI…</div>
+
+<div id="game-board">
+  <div id="winner-banner"></div>
+  <div id="status-bar">
+    <div>Your deck: <span id="player-count">0</span></div>
+    <div>CPU deck: <span id="cpu-count">0</span></div>
+    <div>Round: <span id="round-count">0</span></div>
+  </div>
+
+  <div id="arena">
+    <div class="deck-column">
+      <h2>Your Card</h2>
+      <div id="player-card" class="card"></div>
+    </div>
+    <div id="vs-label">VS</div>
+    <div class="deck-column">
+      <h2>CPU Card</h2>
+      <div id="cpu-card" class="card face-down"><div class="back-logo">?</div></div>
+    </div>
+    <div class="deck-column" id="pot-column">
+      <h2>Draw Pot</h2>
+      <div id="pot-card" class="card pot-card">
+        <div class="pot-icon">🂠</div>
+        <div class="pot-count">0</div>
+        <div class="pot-label">cards waiting</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="controls">
+    <button id="new-game-btn">New Game</button>
+  </div>
+
+  <div id="log-panel"></div>
+</div>
+
+<script src="types.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
