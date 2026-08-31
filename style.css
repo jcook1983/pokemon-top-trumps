@@ -172,10 +172,9 @@ header p { color: var(--muted); margin: 4px 0 0; }
   box-shadow: 0 8px 20px rgba(0,0,0,0.5);
   display: flex;
   flex-direction: column;
-  transition: transform 0.6s cubic-bezier(.4,0,.2,1), opacity 0.6s ease, box-shadow 0.3s ease;
-  transform-style: preserve-3d;
   align-items: center;
-  transition: transform 0.2s ease;
+  transform-style: preserve-3d;
+  transition: transform 0.6s cubic-bezier(.4,0,.2,1), opacity 0.6s ease, box-shadow 0.3s ease;
 }
 
 .card.face-down {
@@ -422,4 +421,54 @@ button#new-game-btn:hover { filter: brightness(1.1); }
   font-weight: 800;
   color: var(--accent);
   margin-bottom: 12px;
+}
+
+/* Mobile: keep Your Card / VS / CPU Card side by side instead of stacked. */
+@media (max-width: 640px) {
+  body { padding: 12px; }
+
+  header h1 { font-size: 1.5rem; }
+  header p { font-size: 0.85rem; }
+
+  #status-bar { gap: 12px; font-size: 0.9rem; flex-wrap: wrap; }
+
+  #arena {
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .deck-column { flex: 0 1 auto; }
+  .deck-column h2 { font-size: 0.7rem; margin-bottom: 4px; }
+
+  .card {
+    width: calc(50vw - 46px);
+    min-width: 120px;
+    min-height: 0;
+    padding: 8px;
+  }
+
+  .card .sprite-wrap { width: 64px; height: 64px; }
+  .card img.sprite { width: 54px; height: 54px; }
+  .card .name { font-size: 0.8rem; margin: 4px 0 3px; }
+
+  .type-badges { gap: 3px; margin: 3px 0 6px; flex-wrap: wrap; justify-content: center; }
+  .type-badge { font-size: 0.55rem; padding: 2px 6px; }
+
+  .stats-list { gap: 3px; }
+  .stat-row { padding: 3px 6px; font-size: 0.68rem; }
+  .stat-row .stat-name { font-size: 0.55rem; }
+  .mult-badge { font-size: 0.55rem; padding: 0 4px; margin-left: 3px; }
+
+  #vs-label { padding-top: 0; font-size: 1.1rem; align-self: center; }
+
+  /* Pot only appears on a tie chain — give it its own full-width row below. */
+  #pot-column {
+    flex-basis: 100%;
+    order: 3;
+    margin-top: 8px;
+  }
+  .card.pot-card { width: calc(50vw - 46px); min-width: 120px; min-height: 120px; margin: 0 auto; }
+  .pot-icon { font-size: 1.6rem; }
+  .pot-count { font-size: 1.4rem; }
 }
