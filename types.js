@@ -49,8 +49,19 @@ function typeEffectivenessDetailed(attackerTypes, defenderTypes) {
   return { mult: best, attackType: bestType };
 }
 
+// Damping factor applied to raw type multipliers so type advantage nudges a stat
+// rather than dominating it. Scales how far the raw multiplier sits from ×1 down
+// to a quarter of that distance: ×2 -> ×1.25, ×0.5 -> ×0.875, ×0 -> ×0.75, etc.
+const TYPE_EFFECT_DAMPING = 0.25;
+
+function dampenMultiplier(rawMult) {
+  return 1 + (rawMult - 1) * TYPE_EFFECT_DAMPING;
+}
+
+// The dampened multiplier actually applied to stats in-game.
 function typeEffectiveness(attackerTypes, defenderTypes) {
-  return typeEffectivenessDetailed(attackerTypes, defenderTypes).mult;
+  const raw = typeEffectivenessDetailed(attackerTypes, defenderTypes).mult;
+  return dampenMultiplier(raw);
 }
 
 function capitalize(word) {
@@ -58,10 +69,12 @@ function capitalize(word) {
 }
 
 // Human-readable explanation of why a stat got boosted/weakened, or null if neutral (×1).
+// The super/not-very/no-effect verdict is based on the true type matchup, but the
+// number shown is the dampened multiplier that's actually applied to the stat.
 function describeMultiplier(attackerTypes, defenderTypes) {
-  const { mult, attackType } = typeEffectivenessDetailed(attackerTypes, defenderTypes);
-  if (mult === 1) return null;
-  const verb = mult === 0 ? 'has no effect on' : mult > 1 ? 'is super effective against' : 'is not very effective against';
+  const { mult: rawMult, attackType } = typeEffectivenessDetailed(attackerTypes, defenderTypes);
+  if (rawMult === 1) return null;
+  const verb = rawMult === 0 ? 'would normally have no effect on' : rawMult > 1 ? 'is super effective against' : 'is not very effective against';
   const defenderLabel = defenderTypes.map(capitalize).join('/');
-  return `${capitalize(attackType)} ${verb} ${defenderLabel} (×${mult})`;
+  return `${capitalize(attackType)} ${verb} ${defenderLabel} (×${dampenMultiplier(rawMult)})`;
 }
