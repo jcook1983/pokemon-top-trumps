@@ -40,7 +40,7 @@ let selectedCardRule = 'classic';
 let state = {
   playerDeck: [],
   cpuDeck: [],
-  pot: [],        // cards held in limbo through a chain of tied draws
+  pot: { player: [], cpu: [] }, // cards held in limbo through a chain of tied draws, kept split by which side drew them
   round: 0,
   turn: 'player', // who calls the next stat
   difficulty: 'medium',
@@ -187,8 +187,9 @@ function clearRoundAnimations() {
 }
 
 function updatePotIndicator() {
-  els.potColumn.classList.toggle('visible', state.pot.length > 0);
-  els.potCount.textContent = state.pot.length;
+  const total = state.pot.player.length + state.pot.cpu.length;
+  els.potColumn.classList.toggle('visible', total > 0);
+  els.potCount.textContent = total;
 }
 
 // ---- Sound (synthesized, no external assets) ----
@@ -259,7 +260,9 @@ function checkGameOver() {
   return false;
 }
 
-function buildResultText(callerLabel, statLabel, playerCard, cpuCard, playerVal, cpuVal, outcome, cardRule, potCount) {
+// potCounts = { player: n, cpu: n } — how many pot cards each side contributed
+// through the tie chain so far (always equal, since each tie adds one from each side).
+function buildResultText(callerLabel, statLabel, playerCard, cpuCard, playerVal, cpuVal, outcome, cardRule, potCounts) {
   const pName = capitalize(playerCard.name);
   const cName = capitalize(cpuCard.name);
   const playerReason = describeMultiplier(playerCard.types, cpuCard.types);
@@ -276,12 +279,21 @@ function buildResultText(callerLabel, statLabel, playerCard, cpuCard, playerVal,
 
   const winnerIsPlayer = outcome === 'player';
   const loserName = winnerIsPlayer ? cName : pName;
-  const potNote = potCount > 0 ? ` plus ${potCount} pot card${potCount === 1 ? '' : 's'}` : '';
 
   if (cardRule === 'elimination') {
+    const winnerPotCount = winnerIsPlayer ? potCounts.player : potCounts.cpu;
+    const loserPotCount = winnerIsPlayer ? potCounts.cpu : potCounts.player;
+
     text += winnerIsPlayer ? ' You win the round!' : ' CPU wins the round!';
-    text += ` ${loserName}${potCount > 0 ? ` and ${potCount} pot card${potCount === 1 ? '' : 's'}` : ''} eliminated from the game.`;
+    text += ` ${loserName}${loserPotCount > 0 ? ` and their ${loserPotCount} pot card${loserPotCount === 1 ? '' : 's'}` : ''} eliminated from the game.`;
+    if (winnerPotCount > 0) {
+      text += winnerIsPlayer
+        ? ` You reclaim your ${winnerPotCount} pot card${winnerPotCount === 1 ? '' : 's'}.`
+        : ` CPU reclaims its ${winnerPotCount} pot card${winnerPotCount === 1 ? '' : 's'}.`;
+    }
   } else {
+    const potTotal = potCounts.player + potCounts.cpu;
+    const potNote = potTotal > 0 ? ` plus ${potTotal} pot card${potTotal === 1 ? '' : 's'}` : '';
     text += winnerIsPlayer
       ? ` You win the round and claim ${loserName}${potNote}!`
       : ` CPU wins the round and claims ${loserName}${potNote}!`;
@@ -329,7 +341,8 @@ function resolveStat(statKey, isChainedDraw) {
   });
   playSound('flip');
   if (isChainedDraw) {
-    logMsg(`Drawing again on ${statLabel} (pot: ${state.pot.length} cards) — ${capitalize(playerCard.name)} vs ${capitalize(cpuCard.name)}…`, state.turn === 'player' ? 'you' : 'cpu');
+    const potTotal = state.pot.player.length + state.pot.cpu.length;
+    logMsg(`Drawing again on ${statLabel} (pot: ${potTotal} cards) — ${capitalize(playerCard.name)} vs ${capitalize(cpuCard.name)}…`, state.turn === 'player' ? 'you' : 'cpu');
   }
 
   // Stage 2 (t=900ms): reveal the type-effectiveness modifier on the called stat.
@@ -348,7 +361,10 @@ function resolveStat(statKey, isChainedDraw) {
   // winner/loser, and play the outcome sound.
   setTimeout(() => {
     logMsg(
-      buildResultText(callerLabel, statLabel, playerCard, cpuCard, playerVal, cpuVal, outcome, state.cardRule, state.pot.length),
+      buildResultText(callerLabel, statLabel, playerCard, cpuCard, playerVal, cpuVal, outcome, state.cardRule, {
+        player: state.pot.player.length,
+        cpu: state.pot.cpu.length
+      }),
       state.turn === 'player' ? 'you' : 'cpu'
     );
 
@@ -387,7 +403,8 @@ function resolveStat(statKey, isChainedDraw) {
     state.round++;
 
     if (outcome === 'tie') {
-      state.pot.push(playerCard, cpuCard);
+      state.pot.player.push(playerCard);
+      state.pot.cpu.push(cpuCard);
       updateStatusBar();
       updatePotIndicator();
 
@@ -403,35 +420,31 @@ function resolveStat(statKey, isChainedDraw) {
     }
 
     const potCards = state.pot;
-    state.pot = [];
+    state.pot = { player: [], cpu: [] };
     updatePotIndicator();
 
     if (state.cardRule === 'elimination') {
-      // Loser's card and the whole pot are removed from the game entirely —
-      // the winner just keeps their own card and moves on.
+      // Only the LOSING side's card and pot cards are removed from the game.
+      // The winner keeps their own card plus any pot cards their own side drew —
+      // those were never actually lost, since this side just won the stat.
       if (outcome === 'player') {
-        state.playerDeck.push(playerCard);
+        state.playerDeck.push(playerCard, ...potCards.player);
         state.turn = 'player';
       } else {
-        state.cpuDeck.push(cpuCard);
+        state.cpuDeck.push(cpuCard, ...potCards.cpu);
         state.turn = 'cpu';
       }
     } else if (outcome === 'player') {
-      state.playerDeck.push(playerCard, cpuCard, ...potCards);
+      state.playerDeck.push(playerCard, cpuCard, ...potCards.player, ...potCards.cpu);
       state.turn = 'player';
     } else {
-      state.cpuDeck.push(cpuCard, playerCard, ...potCards);
+      state.cpuDeck.push(cpuCard, playerCard, ...potCards.player, ...potCards.cpu);
       state.turn = 'cpu';
     }
 
     updateStatusBar();
-    // Classic: the winner's deck grows, so pulse that count. Elimination: the
-    // winner's deck stays the same size — it's the loser's deck that shrank.
-    if (state.cardRule === 'elimination') {
-      pulseCount(outcome === 'player' ? els.cpuCount : els.playerCount);
-    } else {
-      pulseCount(outcome === 'player' ? els.playerCount : els.cpuCount);
-    }
+    pulseCount(els.playerCount);
+    pulseCount(els.cpuCount);
     state.busy = false;
 
     if (checkGameOver()) return;
@@ -509,7 +522,7 @@ async function startGame(handSize, difficulty, cardRule) {
   state = {
     playerDeck: roster.slice(0, handSize),
     cpuDeck: roster.slice(handSize, handSize * 2),
-    pot: [],
+    pot: { player: [], cpu: [] },
     round: 0,
     turn: 'player',
     difficulty,
